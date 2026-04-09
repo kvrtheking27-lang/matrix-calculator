@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Matrix Calculator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI';
+            background: linear-gradient(to right, #667eea, #764ba2);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        select, button {
+            padding: 10px;
+            margin: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        button {
+            background: #2609df;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #690258;
+        }
+
+        table {
+            margin: 15px auto;
+        }
+
+        input {
+            width: 60px;
+            height: 50px;
+            text-align: center;
+            font-size: 18px;
+            border-radius: 8px;
+            border: none;
+        }
+
+        #result {
+            margin-top: 20px;
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>📊 Advanced Matrix Calculator</h1>
+
+<label>Matrix Size (n x n): <input id="size" type="number" value="2" min="1" onchange="generateMatrix()"></label>
+
+<div id="matrix"></div>
+
+<h3>Vector B (for Ax = B)</h3>
+<div id="vectorB"></div>
+
+<br>
+
+<button onclick="determinant()">Determinant</button>
+<button onclick="inverse()">Inverse</button>
+<button onclick="eigen()">Eigenvalues</button>
+<button onclick="solve()">Solve Ax = B</button>
+
+<h2>Matrix Multiplication</h2>
+
+<label>Matrix A Rows: <input id="aRows" type="number" value="2" min="1"></label>
+<label>Matrix A Columns: <input id="aCols" type="number" value="2" min="1"></label>
+<label>Matrix B Rows: <input id="bRows" type="number" value="2" min="1"></label>
+<label>Matrix B Columns: <input id="bCols" type="number" value="2" min="1"></label>
+
+<button onclick="generateMatrices()">Generate Matrices</button>
+
+<div id="matrixA"></div>
+<div id="matrixB"></div>
+
+<button onclick="multiplyMatrices()">Multiply A × B</button>
+
+<h2>Matrix Addition/Subtraction</h2>
+
+<label>Matrix Rows: <input id="addRows" type="number" value="2" min="1"></label>
+<label>Matrix Columns: <input id="addCols" type="number" value="2" min="1"></label>
+
+<button onclick="generateAddMatrices()">Generate Matrices</button>
+
+<div id="addMatrixA"></div>
+<div id="addMatrixB"></div>
+
+<button onclick="addMatrices()">Add A + B</button>
+<button onclick="subtractMatrices()">Subtract A - B</button>
+
+<div id="result"></div>
+
+<script>
+function generateMatrix() {
+    let size = parseInt(sizeSelect.value);
+    let html = "<table>";
+    for (let i = 0; i < size; i++) {
+        html += "<tr>";
+        for (let j = 0; j < size; j++) {
+            html += `<td><input id="m${i}${j}" value="0"></td>`;
+        }
+        html += "</tr>";
+    }
+    html += "</table>";
+    matrix.innerHTML = html;
+
+    let bHtml = "";
+    for (let i = 0; i < size; i++) {
+        bHtml += `<input id="b${i}" value="0"> `;
+    }
+    vectorB.innerHTML = bHtml;
+}
+
+let sizeSelect = document.getElementById("size");
+generateMatrix();
+
+function getMatrix() {
+    let size = parseInt(sizeSelect.value);
+    let m = [];
+    for (let i = 0; i < size; i++) {
+        m[i] = [];
+        for (let j = 0; j < size; j++) {
+            m[i][j] = parseFloat(document.getElementById(`m${i}${j}`).value);
+        }
+    }
+    return m;
+}
+
+function determinant() {
+    let m = getMatrix();
+    let size = m.length;
+
+    if (size === 2) {
+        let det = m[0][0]*m[1][1] - m[0][1]*m[1][0];
+        result.innerHTML = `Determinant = ${det}`;
+    } else if (size === 3) {
+        let det =
+            m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) -
+            m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) +
+            m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+
+        result.innerHTML = `Determinant (expanded): ${det}`;
+    } else {
+        result.innerHTML = "Determinant calculation implemented for 2x2 and 3x3 matrices only!";
+    }
+}
+
+function inverse() {
+    let m = getMatrix();
+    let size = m.length;
+
+    // Create augmented matrix [A | I]
+    let augmented = [];
+    for (let i = 0; i < size; i++) {
+        augmented[i] = [];
+        for (let j = 0; j < size; j++) {
+            augmented[i][j] = m[i][j];
+        }
+        for (let j = 0; j < size; j++) {
+            augmented[i][size + j] = (i === j) ? 1 : 0;
+        }
+    }
+
+    // Gauss-Jordan elimination
+    for (let i = 0; i < size; i++) {
+        // Find pivot
+        let maxRow = i;
+        for (let k = i + 1; k < size; k++) {
+            if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+                maxRow = k;
+            }
+        }
+
+        // Swap rows
+        let temp = augmented[i];
+        augmented[i] = augmented[maxRow];
+        augmented[maxRow] = temp;
+
+        // Check for singular matrix
+        if (Math.abs(augmented[i][i]) < 1e-10) {
+            result.innerHTML = "No inverse exists (singular matrix)!";
+            return;
+        }
+
+        // Scale pivot row
+        let pivot = augmented[i][i];
+        for (let j = 0; j < 2 * size; j++) {
+            augmented[i][j] /= pivot;
+        }
+
+        // Eliminate column
+        for (let k = 0; k < size; k++) {
+            if (k !== i) {
+                let factor = augmented[k][i];
+                for (let j = 0; j < 2 * size; j++) {
+                    augmented[k][j] -= factor * augmented[i][j];
+                }
+            }
+        }
+    }
+
+    // Extract inverse matrix from augmented matrix
+    let inv = [];
+    for (let i = 0; i < size; i++) {
+        inv[i] = [];
+        for (let j = 0; j < size; j++) {
+            inv[i][j] = augmented[i][size + j];
+        }
+    }
+
+    // Display result
+    let resultHtml = "<h3>Inverse Matrix</h3><table>";
+    for (let i = 0; i < size; i++) {
+        resultHtml += "<tr>";
+        for (let j = 0; j < size; j++) {
+            resultHtml += `<td>${inv[i][j].toFixed(4)}</td>`;
+        }
+        resultHtml += "</tr>";
+    }
+    resultHtml += "</table>";
+    result.innerHTML = resultHtml;
+}
+
+function eigen() {
+    let m = getMatrix();
+    if (m.length !== 2) {
+        result.innerHTML = "Eigenvalues only for 2x2!";
+        return;
+    }
+
+    let trace = m[0][0] + m[1][1];
+    let det = m[0][0]*m[1][1] - m[0][1]*m[1][0];
+
+    let disc = trace*trace - 4*det;
+
+    if (disc < 0) {
+        result.innerHTML = "Complex eigenvalues!";
+        return;
+    }
+
+    let l1 = (trace + Math.sqrt(disc)) / 2;
+    let l2 = (trace - Math.sqrt(disc)) / 2;
+
+    result.innerHTML = `Eigenvalues: ${l1.toFixed(2)}, ${l2.toFixed(2)}`;
+}
+
+function solve() {
+    let m = getMatrix();
+    let size = m.length;
+
+    if (size !== 2) {
+        result.innerHTML = "Solve implemented for 2x2 only!";
+        return;
+    }
+
+    let b0 = parseFloat(document.getElementById("b0").value);
+    let b1 = parseFloat(document.getElementById("b1").value);
+
+    let det = m[0][0]*m[1][1] - m[0][1]*m[1][0];
+
+    if (det === 0) {
+        result.innerHTML = "No unique solution!";
+        return;
+    }
+
+    let x = (b0*m[1][1] - m[0][1]*b1) / det;
+    let y = (m[0][0]*b1 - b0*m[1][0]) / det;
+
+    result.innerHTML = `Solution:<br>x = ${x.toFixed(2)}, y = ${y.toFixed(2)}`;
+}
+
+function generateMatrices() {
+    let aRows = parseInt(document.getElementById('aRows').value);
+    let aCols = parseInt(document.getElementById('aCols').value);
+    let bRows = parseInt(document.getElementById('bRows').value);
+    let bCols = parseInt(document.getElementById('bCols').value);
+
+    if (aCols !== bRows) {
+        document.getElementById('result').innerHTML = "Error: Number of columns in A must equal number of rows in B for multiplication!";
+        return;
+    }
+
+    // Generate Matrix A
+    let aHtml = "<h3>Matrix A</h3><table>";
+    for (let i = 0; i < aRows; i++) {
+        aHtml += "<tr>";
+        for (let j = 0; j < aCols; j++) {
+            aHtml += `<td><input id="a${i}${j}" value="0"></td>`;
+        }
+        aHtml += "</tr>";
+    }
+    aHtml += "</table>";
+    document.getElementById('matrixA').innerHTML = aHtml;
+
+    // Generate Matrix B
+    let bHtml = "<h3>Matrix B</h3><table>";
+    for (let i = 0; i < bRows; i++) {
+        bHtml += "<tr>";
+        for (let j = 0; j < bCols; j++) {
+            bHtml += `<td><input id="b${i}${j}" value="0"></td>`;
+        }
+        bHtml += "</tr>";
+    }
+    bHtml += "</table>";
+    document.getElementById('matrixB').innerHTML = bHtml;
+}
+
+function multiplyMatrices() {
+    let aRows = parseInt(document.getElementById('aRows').value);
+    let aCols = parseInt(document.getElementById('aCols').value);
+    let bCols = parseInt(document.getElementById('bCols').value);
+
+    let A = [];
+    for (let i = 0; i < aRows; i++) {
+        A[i] = [];
+        for (let j = 0; j < aCols; j++) {
+            A[i][j] = parseFloat(document.getElementById(`a${i}${j}`).value);
+        }
+    }
+
+    let B = [];
+    for (let i = 0; i < aCols; i++) {
+        B[i] = [];
+        for (let j = 0; j < bCols; j++) {
+            B[i][j] = parseFloat(document.getElementById(`b${i}${j}`).value);
+        }
+    }
+
+    // Multiply
+    let C = [];
+    for (let i = 0; i < aRows; i++) {
+        C[i] = [];
+        for (let j = 0; j < bCols; j++) {
+            C[i][j] = 0;
+            for (let k = 0; k < aCols; k++) {
+                C[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+
+    // Display result
+    let resultHtml = "<h3>Result A × B</h3><table>";
+    for (let i = 0; i < aRows; i++) {
+        resultHtml += "<tr>";
+        for (let j = 0; j < bCols; j++) {
+            resultHtml += `<td>${C[i][j].toFixed(2)}</td>`;
+        }
+        resultHtml += "</tr>";
+    }
+    resultHtml += "</table>";
+    document.getElementById('result').innerHTML = resultHtml;
+}
+
+function generateAddMatrices() {
+    let rows = parseInt(document.getElementById('addRows').value);
+    let cols = parseInt(document.getElementById('addCols').value);
+
+    // Generate Matrix A
+    let aHtml = "<h3>Matrix A</h3><table>";
+    for (let i = 0; i < rows; i++) {
+        aHtml += "<tr>";
+        for (let j = 0; j < cols; j++) {
+            aHtml += `<td><input id="addA${i}${j}" value="0"></td>`;
+        }
+        aHtml += "</tr>";
+    }
+    aHtml += "</table>";
+    document.getElementById('addMatrixA').innerHTML = aHtml;
+
+    // Generate Matrix B
+    let bHtml = "<h3>Matrix B</h3><table>";
+    for (let i = 0; i < rows; i++) {
+        bHtml += "<tr>";
+        for (let j = 0; j < cols; j++) {
+            bHtml += `<td><input id="addB${i}${j}" value="0"></td>`;
+        }
+        bHtml += "</tr>";
+    }
+    bHtml += "</table>";
+    document.getElementById('addMatrixB').innerHTML = bHtml;
+}
+
+function addMatrices() {
+    let rows = parseInt(document.getElementById('addRows').value);
+    let cols = parseInt(document.getElementById('addCols').value);
+
+    let A = [];
+    for (let i = 0; i < rows; i++) {
+        A[i] = [];
+        for (let j = 0; j < cols; j++) {
+            A[i][j] = parseFloat(document.getElementById(`addA${i}${j}`).value);
+        }
+    }
+
+    let B = [];
+    for (let i = 0; i < rows; i++) {
+        B[i] = [];
+        for (let j = 0; j < cols; j++) {
+            B[i][j] = parseFloat(document.getElementById(`addB${i}${j}`).value);
+        }
+    }
+
+    // Add
+    let C = [];
+    for (let i = 0; i < rows; i++) {
+        C[i] = [];
+        for (let j = 0; j < cols; j++) {
+            C[i][j] = A[i][j] + B[i][j];
+        }
+    }
+
+    // Display result
+    let resultHtml = "<h3>Result A + B</h3><table>";
+    for (let i = 0; i < rows; i++) {
+        resultHtml += "<tr>";
+        for (let j = 0; j < cols; j++) {
+            resultHtml += `<td>${C[i][j].toFixed(2)}</td>`;
+        }
+        resultHtml += "</tr>";
+    }
+    resultHtml += "</table>";
+    document.getElementById('result').innerHTML = resultHtml;
+}
+
+function subtractMatrices() {
+    let rows = parseInt(document.getElementById('addRows').value);
+    let cols = parseInt(document.getElementById('addCols').value);
+
+    let A = [];
+    for (let i = 0; i < rows; i++) {
+        A[i] = [];
+        for (let j = 0; j < cols; j++) {
+            A[i][j] = parseFloat(document.getElementById(`addA${i}${j}`).value);
+        }
+    }
+
+    let B = [];
+    for (let i = 0; i < rows; i++) {
+        B[i] = [];
+        for (let j = 0; j < cols; j++) {
+            B[i][j] = parseFloat(document.getElementById(`addB${i}${j}`).value);
+        }
+    }
+
+    // Subtract
+    let C = [];
+    for (let i = 0; i < rows; i++) {
+        C[i] = [];
+        for (let j = 0; j < cols; j++) {
+            C[i][j] = A[i][j] - B[i][j];
+        }
+    }
+
+    // Display result
+    let resultHtml = "<h3>Result A - B</h3><table>";
+    for (let i = 0; i < rows; i++) {
+        resultHtml += "<tr>";
+        for (let j = 0; j < cols; j++) {
+            resultHtml += `<td>${C[i][j].toFixed(2)}</td>`;
+        }
+        resultHtml += "</tr>";
+    }
+    resultHtml += "</table>";
+    document.getElementById('result').innerHTML = resultHtml;
+}
+</script>
+
+</body>
+</html>
